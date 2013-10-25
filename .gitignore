@@ -1,0 +1,4 @@
+*.gz
+CaOutput/
+! *.py
+! input/
