@@ -2,7 +2,7 @@
 
 "Automatically creates a PDB:DNA data set."
 from optparse import OptionParser, OptionGroup
-from data import *
+from data_new import *
 #Xiaqng's change
 ##import optparse
 
@@ -14,14 +14,14 @@ from data import *
 optpars = OptionParser(usage="usage: %prog [options] filename",
                       version="%prog 0.1")
 
-office_Mac_address='/Users/xji3/clemensCode'
+office_Mac_address='/Users/xji3/modifiedClemensCode/modifiedClemensCode'
 #home_pc_address='G:/Dropbox/My Files/BRC/Small Project/Clemens PY code'
 #laptop_address='E:/Dropbox/Dropbox/My Files/BRC/Small Project/Clemens PY code'
 address=office_Mac_address
 
 CnFolder='/CnDataOutput'
 CaFolder='/CaOutput'
-OutputFolder=CaFolder
+OutputFolder=CnFolder
 if OutputFolder==CaFolder:
     CNorCA='Ca-Ca'
 elif OutputFolder==CnFolder:

@@ -266,7 +266,7 @@ class Protein:
             chain = model[chain_list[0]]
             
             pdb_file_dir=self.out_dir + self.pdb_ID + '/'
-            naccess_dir='/Users/xji3/Documents/Naccess/naccess'
+            naccess_dir='/Users/xji3/nAccess/Naccess/naccess'
         
             rd = NACCESS(chain, pdb_file_dir, self.pdb_ID, naccess_dir )
 
@@ -466,7 +466,7 @@ class Protein:
 
 #-------------------------------------------------------------------------------
     def alignLocalWater(self, ccds_AA):
-        water_localfile_dir='/Users/xji3/Downloads/EMBOSS-6.6.0/emboss'
+        water_localfile_dir='/Users/xji3/emBoss/EMBOSS-6.6.0/emboss'
         if os.path.isfile(water_localfile_dir+'/water'):
             water = water_localfile_dir+'/water'
         else:

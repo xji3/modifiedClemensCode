@@ -1,4 +1,5 @@
 *.gz
 CaOutput/
+CnDataOutput/
 ! *.py
 ! input/

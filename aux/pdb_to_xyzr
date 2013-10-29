@@ -1,0 +1,2 @@
+#!/bin/bash
+python ./aux/pdb_to_xyzrn.py $1
