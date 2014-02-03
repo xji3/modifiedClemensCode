@@ -1,5 +1,10 @@
 *.gz
+*.pyc
 CaOutput/
 CnDataOutput/
 ! *.py
 ! input/
+*.zip
+2ndNewDmat/
+ModifiedDMatTest/
+OldOutput/

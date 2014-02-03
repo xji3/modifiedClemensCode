@@ -143,8 +143,8 @@ class Protein:
                 idx2 = idx1+1
                 for j in range(i+1, r_to):
                     if not math.isnan(dmat[i, j]):
-                        f.write(str(idx1) + ' ' + str(idx2) + ' ' + tmpstr[(idx1-1)*3:(idx1-1)*3+3] + ' ')
-                        f.write(tmpstr[(idx2-1)*3:(idx2-1)*3+3] + ' ' + str(dmat[i, j]) + '\n')
+                        f.write(str(idx1) + '\t' + str(idx2) + '\t' + tmpstr[(idx1-1)*3:(idx1-1)*3+3] + '\t')
+                        f.write(tmpstr[(idx2-1)*3:(idx2-1)*3+3] + '\t' + str(dmat[i, j]) + '\t' + tmpstr2[idx1-1].seq + '\t' + tmpstr2[idx2-1].seq +'\t' + str(idx1+r_from) + '\t' + str(idx2+r_from) +'\n')
                     idx2 = idx2+1
                 idx1 = idx1+1
 
@@ -370,9 +370,9 @@ class Protein:
         self.printDMat()
         self.printMismatches()
         self.printSeqFile()
-        self.printSolvAcc()
-        self.printExcludedRes()
-        self.printnAccess()
+#        self.printSolvAcc()
+#        self.printExcludedRes()
+#        self.printnAccess()
 
 #-------------------------------------------------------------------------------
     def returnindexes(self,a,b): # a is pdbseq instance @Xiang
@@ -587,37 +587,123 @@ class Protein:
         tmp = [ str(pp.get_sequence()) for pp in ppb.build_peptides(chain, aa_only=False) ]
 
         # Join the lists to get nRes
-        structure_residues = [None] * len(list(itertools.chain(*tmp)))
-        idx = 0
-        for r in chain: #.get_residues() seems like r=residues in chain, which doesn't need that function @Xiang
-            if r.has_id('CA') and r.get_id()[0] == ' ': # No Het
-                structure_residues[idx] = r
-                idx = idx + 1
+#        structure_residues = [None] * len(list(itertools.chain(*tmp)))
+        structure_residues = [r for r in chain if r.has_id('CA') and r.get_id()[0] == ' ' ]
+
+
+#############################################################################
+        ccds = self.ccds_match[0]
+
+        # CCDS string up until the beginning of the ungapped segment without gaps
+        tmpstr = ccds.ccds_AA[:ccds.ccds_local_alignment_start] + string.replace(ccds.ccds_alignedAA[:ccds.ungapped_segment_start], '-', '')
+        # First codon of ungapped sequence in DNA sequence
+        idx = 3*len(tmpstr)
+        # The DNA sequence for the ungapped segment
+        strng = ccds.ccds_DNA[idx:idx+3*ccds.ungapped_segment_length]
+
+        # Start of ungapped segment in the PDB fasta sequence
+        r_from = self.pdb_AA.find( ccds.pdb_alignedAA[ccds.ungapped_segment_start:ccds.ungapped_segment_start+ccds.ungapped_segment_length])
+        # End of ungapped segment in the PDB fasta sequence
+        r_to = r_from + ccds.ungapped_segment_length
+        # The structure sequence is aligned to the fasta sequence, may have gaps in the ungapped segment
+        nres = len(self.pdb_structure_AA[r_from:r_to]) - self.pdb_structure_AA[r_from:r_to].count('-')
+#############################################################################
+##        idx = 0
+##        for r in chain: #.get_residues() seems like r=residues in chain, which doesn't need that function @Xiang
+##            if r.has_id('CA') and r.get_id()[0] == ' ': # No Het
+##                structure_residues[idx] = r
+##                structure_resseq[idx] = r.get_id()[1]
+##                idx = idx + 1
 
         dmat = numpy.empty((len(self.pdb_AA), len(self.pdb_AA)), numpy.float)
         dmat[:] = numpy.NAN
         nres = len(structure_residues)
         r_idx1 = 0
-        tot = len(self.pdb_AA)
-        for i in range(tot-1): #why -1 range(3)=[0,1,2] Stop Codon? @Xiang 
-            if self.pdb_structure_AA[i] != '-' and structure_residues[r_idx1]:
-                dmat[i, i] = 0.0
-                r1 = structure_residues[r_idx1]
-                r_idx1 = r_idx1 + 1
+        sortloc_list = self.pdb_structure_AA.loc_list[:]
+
+        for i in range(len(structure_residues)):
+            resseq_i = structure_residues[i].get_id()[1]
+            i_idx_list = self.returnindexes(sortloc_list,resseq_i)
+            if i_idx_list:
+                i_dmat = i_idx_list[0]
+                sortloc_list[i_dmat] = None
             else:
                 continue
-            r_idx2 = r_idx1
-            for j in range(i+1, tot):
-                if self.pdb_structure_AA[j] != '-' and structure_residues[r_idx2]:
-                    r2 = structure_residues[r_idx2]
-                    r_idx2 = r_idx2 + 1
+            #i_dmat = structure_residues[i].get_id()[1]-structure_residues[0].get_id()[1]
+            if i_dmat >= r_from and i_dmat < r_to:
+                dmat[i_dmat, i_dmat] = 0.0
+                j_sortloc_list = sortloc_list[:]
+            else:
+                continue
+            for j in range(i+1,len(structure_residues)):
+                resseq_j = structure_residues[j].get_id()[1]
+                j_idx_list = self.returnindexes(j_sortloc_list,resseq_j)
+                if j_idx_list:
+                    j_dmat = j_idx_list[0]
+                    #j_dmat = structure_residues[j].get_id()[1]-structure_residues[0].get_id()[1]
+                    dmat[i_dmat, j_dmat] = self.calcCAdist(structure_residues[i],structure_residues[j])
+                    dmat[j_dmat, i_dmat] = dmat[i_dmat, j_dmat]
+                    j_sortloc_list[j_dmat] = None
                 else:
                     continue
-                if (r1.has_id('CA') and r2.has_id('CA')):
-                    dmat[i, j] = self.calcCAdist(r1, r2)
-                    dmat[j, i] = dmat[i, j]
         return dmat
 
+        
+##        for i in range(tot-1): #why -1 range(3)=[0,1,2] Stop Codon? @Xiang 
+##            if self.pdb_structure_AA[i] != '-' and structure_residues[r_idx1]:
+##                
+##                dmat[i, i] = 0.0
+##                r1 = structure_residues[r_idx1]
+##                r_idx1 = r_idx1 + 1
+##            else:
+##                continue
+##            r_idx2 = r_idx1
+##            for j in range(i+1, tot):
+##                if self.pdb_structure_AA[j] != '-' and structure_residues[r_idx2]:
+##                    r2 = structure_residues[r_idx2]
+##                    r_idx2 = r_idx2 + 1
+##                else:
+##                    continue
+##                if (r1.has_id('CA') and r2.has_id('CA')):
+##                    dmat[i, j] = self.calcCAdist(r1, r2)
+##                    dmat[j, i] = dmat[i, j]
+##        return dmat
+#    
+### Remember to delete
+##            #Xiang Version start
+##            nchck=0
+##            nres = nres - len(list(set([i for i in self.Excluded_res if i>=r_from and i<r_to])))
+##            sortloc_list = self.pdb_structure_AA.loc_list[:]
+##            for item in rd:
+##                resseq=item[0].get_id()[1]
+##                
+##                index_list = self.returnindexes(sortloc_list,resseq)
+##                if index_list:
+##                    idx = index_list[0]
+##                    sortloc_list[idx] = None
+##                    #assert (len(index_list)==1)
+##                    #it should be one to one but like pdbID = 1CS8, resseq 1p to 96p then 1 to 749. It's converted to 1-96 followed by 1-749 in Bio.PDB 
+##                else:
+##                    continue
+##
+##                
+##                if idx<r_to and idx>=r_from:
+##
+##                    if item[0].has_id('CA') and item[0].get_id()[0] == ' ': # No Het
+##                        f.write(str(idx+1) + '\t' + strng[(idx-r_from)*3:(idx-r_from)*3+3] + '\t' + str(item[1]['all_atoms_rel']) + '\t'
+##                                + str(item[1]['all_atoms_abs']) + '\t' + str(self.pdb_structure_AA.seq[idx]) + '\t' + str(item[0].get_resname()) + '\t' + str(resseq) + '\n')
+##                        nchck = nchck + 1
+##            if nchck != nres:
+##                with gzip.open(self.out_dir + 'ErrorPDBList.nacerr.gz', 'a') as f2:
+##                    print '===============nAccess Checking Issue for PDB ID:', self.pdb_ID
+##                    print 'nchck = ', nchck, 'nres = ', nres
+##                    f2. write(str(self.pdb_ID) + '\t' + str(nchck) + '\t' + str(nres) + '\n')
+##            else:
+##                print
+##
+##            #End of Xiang Version
+##            #assert(nchck == nres)
+### Remember to delete
 #-------------------------------------------------------------------------------
     def printDMatrix(self):
         tot = len(self.pdb_AA)

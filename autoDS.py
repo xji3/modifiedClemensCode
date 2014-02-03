@@ -21,7 +21,7 @@ address=office_Mac_address
 
 CnFolder='/CnDataOutput'
 CaFolder='/CaOutput'
-OutputFolder=CnFolder
+OutputFolder=CaFolder
 if OutputFolder==CaFolder:
     CNorCA='Ca-Ca'
 elif OutputFolder==CnFolder:
